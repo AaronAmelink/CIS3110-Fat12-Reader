@@ -49,6 +49,7 @@ typedef struct fat12fs  {
 	/** working space */
 	unsigned char *fs_fatdata;	/* in-memory array of FAT values */ 
 	fat12fs_DIRENTRY *fs_rootdirentry; /* in-memory rootdir image */
+	//^^^ this is an array, direntry is not a file.
 } fat12fs;
 
 

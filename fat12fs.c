@@ -368,10 +368,36 @@ fat12fsGetFatEntry(struct fat12fs *fs, int index)
 int
 fat12fsDumpFat(FILE *ofp, struct fat12fs *fs)
 {
-	fprintf(stderr, "fat12fsDumpFat() -- NOT IMPLEMENTED YET\n");
-	/* Not implemented yet, so just return an error */
-	/* ??? */
-	return -1;
+	fprintf(ofp, "FAT table dump FORMATTED:\n");
+	int printed = 0;
+	for (int i = 0; i < fs->fs_fatsize; i++) {
+		unsigned short fatEntry = fat12fsGetFatEntry(fs, i);
+
+		if (fatEntry != FAT12_FREE) {
+			if (fatEntry == FAT12_EOF1 || fatEntry == FAT12_EOFF) {
+				fprintf(ofp, "|%.4d: EOF|", i);
+			} else {
+				fprintf(ofp, "|%.4d:%.4hu|", i, fatEntry);
+			}
+			printed++;
+		}
+		if (printed % 8 == 0) {
+			fprintf(ofp, "\n");
+		}
+	}
+
+	fprintf(ofp, "\n\nFAT table dump UNFORMATTED:\n");
+	for (int i = 0; i < fs->fs_fatsize; i++) {
+		if (i % 16 == 0) {
+			fprintf(ofp, "%.4d : ", i);
+		}
+		unsigned short fatEntry = fat12fsGetFatEntry(fs, i);
+		fprintf(ofp, " %.3x", fatEntry);
+		if (i % 16 == 15) {
+			fprintf(ofp, "\n");
+		}
+	}
+	return 1;
 }
 
 /**
@@ -406,8 +432,29 @@ fat12fsSearchRootdir(
 	struct fat12fs *fs,
 	const char *filename)
 {
-	fprintf(stderr, "fat12fsSearchRootdir() -- NOT IMPLEMENTED YET\n");
-	/* Not implemented yet, so just return an error */
+
+	char* per = strchr(filename, '.');
+	char* name = malloc(per - filename);
+	strncpy(name, filename, per - filename);
+	name[per - filename] = '\0';
+	char* ext = malloc(strlen(per) - 1);
+	strcpy(ext, per + 1);
+	ext[strlen(per) - 1] = '\0';
+
+	for (int i = 0; i < strlen(name); i++) {
+		name[i] = tolower(name[i]);
+	}
+
+	for (int i = 0; i < fs->fs_rootdirsize; i++) {
+		if (*ext == '\0') {
+			continue;
+		}
+		if (strcmp(fs->fs_rootdirentry[i].de_name, name) == 0 && strcmp(fs->fs_rootdirentry[i].de_nameext, ext) == 0) {
+			free(name);
+			free(ext);
+			return i;
+		}
+	}
 	/* ??? */
 	return -1;
 }
@@ -423,10 +470,9 @@ fat12fsLoadDataBlock(
 	char *buffer,
 	int index)
 {
-	fprintf(stderr, "fat12fsLoadDataBlock() -- NOT IMPLEMENTED YET\n");
-	/* Not implemented yet, so just return an error */
-	/* ??? */
-	return -1;
+	int blknum = fs->fs_datablock0 + index - 2; // Corrected block calculation
+
+	return fat12fsRawDiskRead(fs->fs_fd, blknum, buffer);
 }
 
 /**
