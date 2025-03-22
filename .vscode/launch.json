@@ -6,7 +6,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/fat12reader", // Path to your compiled executable
-            "args": ["smallfiles.fd0"], // Replace with the path to your input file
+            "args": ["testdisk.fd0"], // Replace with the path to your input file
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

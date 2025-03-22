@@ -410,10 +410,22 @@ fat12fsDumpFat(FILE *ofp, struct fat12fs *fs)
 int
 fat12fsDumpRootdir(FILE *ofp, struct fat12fs *fs)
 {
-	fprintf(stderr, "fat12fsDumpRootdir() -- NOT IMPLEMENTED YET\n");
-	/* Not implemented yet, so just return an error */
-	/* ??? */
-	return -1;
+	fprintf(ofp, "Root directory dump:\n");
+	for (int i = 0; i < fs->fs_rootdirsize; i++) {
+		fat12fs_DIRENTRY cur = fs->fs_rootdirentry[i];
+		if (cur.de_name[0] == NAME0_EMPTY) {
+			continue;
+		}
+		if (cur.de_name[0] == NAME0_DELETED) {
+			fprintf(ofp, "%d : DEL  ", i);
+		} else if (cur.de_attributes & ATTR_VOLUME) {
+			fprintf(ofp, "%d : VOL  ", i);
+		} else {
+			fprintf(ofp, "%d : FILE ", i);
+		}
+		fprintf(ofp, "[%.8s.%.3s] (%x bytes, start %d)\n", cur.de_name, cur.de_nameext, cur.de_filelen, cur.de_fileblock0);
+	}
+	return 1;
 }
 
 /**
@@ -442,14 +454,24 @@ fat12fsSearchRootdir(
 	ext[strlen(per) - 1] = '\0';
 
 	for (int i = 0; i < strlen(name); i++) {
-		name[i] = tolower(name[i]);
+		name[i] = toupper(name[i]);
 	}
 
 	for (int i = 0; i < fs->fs_rootdirsize; i++) {
-		if (*ext == '\0') {
+		int correct = 1;
+		if (*fs->fs_rootdirentry[i].de_nameext == '\0') {
 			continue;
 		}
-		if (strcmp(fs->fs_rootdirentry[i].de_name, name) == 0 && strcmp(fs->fs_rootdirentry[i].de_nameext, ext) == 0) {
+		char* fname = fs->fs_rootdirentry[i].de_name;
+
+		//doing it this way because the last 3 char of de_name seem to include EXT too as its not \0'd
+		for (int j = 0; j < strlen(name); j++) {
+			if (fname[j] != name[j]) {
+				correct = 0;
+			}
+		}
+
+		if (correct == 1) {
 			free(name);
 			free(ext);
 			return i;
@@ -495,7 +517,7 @@ fat12fsVerifyEOF(
 	int bytesRemainInFile, bytesThisBlock;
 	short curblock;
 
-	
+	fat12fs_DIRENTRY entry = fs->fs_rootdirentry[dirEntryIndex];
 	curblock = fs->fs_rootdirentry[dirEntryIndex].de_fileblock0;
 	bytesRemainInFile = fs->fs_rootdirentry[dirEntryIndex].de_filelen;
 
@@ -540,10 +562,64 @@ fat12fsReadData(
 	int startpos,
 	int nBytesToCopy)
 {
-	fprintf(stderr, "fat12fsReadData() -- NOT IMPLEMENTED YET\n");
-	/* Not implemented yet, so just return an error */
-	/* ??? */
-	return -1;
+	int bytesRemainInFile, bytesThisBlock;
+	short curblock;
+
+	int bytesRead = 0;
+
+	int dirEntryIndex = fat12fsSearchRootdir(fs, filename);
+	if (dirEntryIndex == -1) {
+		return -1;
+	}
+	
+	curblock = fs->fs_rootdirentry[dirEntryIndex].de_fileblock0;
+	bytesRemainInFile = fs->fs_rootdirentry[dirEntryIndex].de_filelen;
+	int fileSize = fs->fs_rootdirentry[dirEntryIndex].de_filelen;
+
+	int initStartPos = startpos;
+
+	int reading = 0;
+
+	while (bytesRemainInFile > 0) {
+
+
+		if (bytesRemainInFile < FS_BLKSIZE)
+			bytesThisBlock = bytesRemainInFile;
+		else
+			bytesThisBlock = FS_BLKSIZE;
+
+		if (startpos - FS_BLKSIZE < 0) {
+			// read the block and other blocks
+			reading = 1;
+		}
+
+
+		if (reading == 1 && bytesRead < nBytesToCopy && bytesRead < (fileSize - initStartPos)) {
+			char* temp = malloc(FS_BLKSIZE);
+			fat12fsLoadDataBlock(fs, temp, curblock);
+
+			for (int i = 0; i < bytesThisBlock; i++) {
+				if (bytesRead >= nBytesToCopy) {
+					break;
+				}
+				buffer[bytesRead] = temp[i];
+				bytesRead++;
+			}
+			free(temp);
+		}
+
+		bytesRemainInFile -= FS_BLKSIZE;
+		startpos -= FS_BLKSIZE;
+
+		
+
+		if (bytesRemainInFile > 0) {
+			if (curblock >= FAT12_EOF1 && curblock <= FAT12_EOFF)
+			    return bytesRead;
+			curblock = fat12fsGetFatEntry(fs, curblock);
+		}
+	}
+	return bytesRead;
 }
 
 

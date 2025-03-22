@@ -48,16 +48,22 @@ main(int argc, char **argv)
 					fs->fs_datablock0);
 			printf("\n");
 
-			FILE* file = fopen("fat12fs_dump_fat.txt", "w");
-			fat12fsDumpFat(file, fs);
+			//FILE* file = fopen("fat12fs_dump_fat.txt", "w");
+			//fat12fsDumpFat(file, fs);
 			// char buffer[512];
 			// fat12fsLoadDataBlock(fs, buffer, 3);
 			// for (int i = 0; i < 512; i++) {
 			// 	printf("%c", buffer[i]);
 			// }
-			printf("%d\n", fat12fsSearchRootdir(fs, "LETTERS.txt"));
-			fclose(file);
-			//processCommands(stdin, stdout, fs, base);
+			//printf("%d\n", fat12fsSearchRootdir(fs, "LETTERS.txt"));
+			//fat12fsDumpRootdir(stdout, fs);
+			// char buffer[8280];
+			// fat12fsReadData(fs, buffer, "JABBER.txt", 0, 8280);
+			// for (int i = 0; i < 8280; i++) {
+			// 	printf("%c", buffer[i]);
+			// }
+			//fclose(file);
+			processCommands(stdin, stdout, fs, base);
 
 			fat12fsUmount(fs);
 
